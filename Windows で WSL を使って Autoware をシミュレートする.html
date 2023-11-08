@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Windows で WSL を使って Autoware をシミュレートする</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1 id="windows-で-wsl-を使って-autoware-をシミュレートする">Windows で WSL を使って Autoware をシミュレートする</h1>
+<p>2023年 11月 08日 12時 06分 - 高野 優豪</p>
+<h1 id="windows-subsystem-for-linux-wsl-のセットアップ">Windows Subsystem for Linux (WSL) のセットアップ</h1>
+<p>Windows では仮想化技術を用いて Windows 内で Linux イメージを実行させることができます。この手順では WSL2 をインストールし、Ubuntu と呼ばれる OS を動作させます。</p>
+<p>WSL のインストールの詳細	については、Microsoft の公式ドキュメントが役に立ちます: <a href="https://learn.microsoft.com/ja-jp/windows/wsl/install">https://learn.microsoft.com/ja-jp/windows/wsl/install</a></p>
+<h2 id="wsl2-を新規にインストールする">WSL2 を新規にインストールする</h2>
+<ol>
+<li>PowerShell を管理者権限で開き、<code>wsl --install</code> と入力し実行します。</li>
+<li>PC を再起動するよう言われるので、再起動します。</li>
+<li>再起動後、WSL 用のユーザー名とパスワードを決めて入力します。</li>
+<li>少し待つと Ubuntu が起動します。</li>
+</ol>
+<blockquote>
+<p>ℹ️ ユーザー名とパスワードは任意のものを使用して構いませんが、パスワードは忘れないようにしましょう。</p>
+</blockquote>
+<blockquote>
+<p>ℹ️ パスワード入力時、何も表示されなくても焦らないでください！セキュリティのため入力した文字列は表示されません。</p>
+</blockquote>
+<h2 id="すでに-wsl-がインストールされているなら">すでに WSL がインストールされているなら</h2>
+<p>もしすでに WSL がインストールされているのであれば、PowerShell を管理者権限で開き、<code>wsl --update</code> を実行して最新の WSL2 にアップデートします。<br>
+自分用の WSL の環境がすでに整っており、Autoware のインストールにより環境を破壊したくない場合は <code>wsl --install -d Ubuntu-22.04</code> などで別のディストリビューションをインストールするのも良いでしょう。</p>
+<h1 id="ubuntu-の準備">Ubuntu の準備</h1>
+<p>インストールされた Ubuntu はコマンドでの操作を基本とします。<br>
+慣れないうちは、コマンドをコピーペーストして実行するのが良いでしょう（WSL の場合は右クリックで貼り付けができます）。</p>
+<h2 id="パッケージをアップデートする">パッケージをアップデートする</h2>
+<p>インストールしたばかりの Ubuntu に入っているパッケージは古いため、すべてのパッケージをアップデートします。<br>
+コマンド実行時にはパスワードを求められるので入力します。</p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">sudo</span> apt update
+<span class="token function">sudo</span> apt full-upgrade -y
+<span class="token function">sudo</span> apt autoremove -y
+</code></pre>
+<blockquote>
+<p>ℹ️ Ubuntu に限らず、アップデートを行うことは非常に大切なことです。こまめにアップデートをしましょう。</p>
+</blockquote>
+<h2 id="sudo-をパスワードなしで実行できるようにする">sudo をパスワードなしで実行できるようにする</h2>
+<p><code>sudo</code> コマンドとは、コマンドを root 権限（いわゆる管理者権限）で実行するためのコマンドです。<br>
+パスワードを毎回入力するのも手間であるため、入力しなくても実行できるようにします。</p>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token keyword">echo</span> <span class="token string">"<span class="token variable">$USER</span> ALL=(ALL:ALL) NOPASSWD: ALL"</span> <span class="token operator">|</span> <span class="token function">sudo</span> <span class="token function">tee</span> /etc/sudoers.d/<span class="token variable">$USER</span>
+</code></pre>
+<h1 id="autoware-tutorial-with-pre-built-image">Autoware Tutorial (with pre-built image)</h1>
+<h2 id="実行に必要な依存関係のセットアップ">実行に必要な依存関係のセットアップ</h2>
+<h3 id="docker">Docker</h3>
+<pre class=" language-bash"><code class="prism  language-bash">curl -fsSL https://download.docker.com/linux/ubuntu/gpg <span class="token operator">|</span> <span class="token function">sudo</span> gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+<span class="token keyword">echo</span> <span class="token string">"deb [arch="</span><span class="token variable"><span class="token variable">$(</span>dpkg --print-architecture<span class="token variable">)</span></span><span class="token string">" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu "</span><span class="token punctuation">$(</span>. /etc/os-release <span class="token operator">&amp;&amp;</span> <span class="token keyword">echo</span> <span class="token string">"<span class="token variable">$VERSION_CODENAME</span>"</span><span class="token punctuation">)</span><span class="token string">" stable"</span> <span class="token operator">|</span> <span class="token function">sudo</span> <span class="token function">tee</span> /etc/apt/sources.list.d/docker.list <span class="token operator">&gt;</span> /dev/null
+<span class="token function">sudo</span> apt update
+<span class="token function">sudo</span> apt <span class="token function">install</span> -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+<span class="token function">sudo</span> <span class="token function">usermod</span> -aG docker <span class="token variable">$USER</span>
+</code></pre>
+<h3 id="rocker">rocker</h3>
+<pre class=" language-bash"><code class="prism  language-bash"><span class="token function">sudo</span> curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+<span class="token keyword">echo</span> <span class="token string">"deb [arch=<span class="token variable"><span class="token variable">$(</span>dpkg --print-architecture<span class="token variable">)</span></span> signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu <span class="token variable"><span class="token variable">$(</span><span class="token keyword">.</span> /etc/os-release <span class="token operator">&amp;&amp;</span> <span class="token keyword">echo</span> $UBUNTU_CODENAME<span class="token variable">)</span></span> main"</span> <span class="token operator">|</span> <span class="token function">sudo</span> <span class="token function">tee</span> /etc/apt/sources.list.d/ros2.list <span class="token operator">&gt;</span> /dev/null
+<span class="token function">sudo</span> apt update
+<span class="token function">sudo</span> apt <span class="token function">install</span> -y python3-rocker
+</code></pre>
+<h3 id="初回セットアップ後は変更を適用するために再ログインが必要">初回セットアップ後は変更を適用するために再ログインが必要</h3>
+<p><code>exit</code> などを実行してから、再度 Ubuntu を起動しなおす</p>
+<h2 id="シミュレーションをする">シミュレーションをする</h2>
+<h3 id="（最初だけ実行）">（最初だけ実行）</h3>
+<pre class=" language-bash"><code class="prism  language-bash">docker pull ghcr.io/autowarefoundation/autoware-universe:humble-latest-prebuilt
+
+<span class="token function">sudo</span> apt <span class="token function">install</span> -y unzip python3-pip <span class="token operator">&amp;&amp;</span> <span class="token function">sudo</span> pip3 <span class="token function">install</span> gdown
+<span class="token function">mkdir</span> ~/autoware_map <span class="token operator">&amp;&amp;</span> <span class="token function">cd</span> ~/autoware_map
+gdown <span class="token string">'https://docs.google.com/uc?export=download&amp;id=1499_nsbUbIeturZaDj7jhUownh5fvXHd'</span>
+unzip sample-map-planning.zip
+</code></pre>
+<h3 id="docker-の環境に入る">docker の環境に入る</h3>
+<pre class=" language-bash"><code class="prism  language-bash">rocker --nvidia --x11 --user --volume <span class="token variable">$HOME</span>/autoware_map -- ghcr.io/autowarefoundation/autoware-universe:humble-latest-prebuilt
+</code></pre>
+<h3 id="プランニングシミュレーターを起動する">プランニングシミュレーターを起動する</h3>
+<pre class=" language-bash"><code class="prism  language-bash">ros2 launch autoware_launch planning_simulator.launch.xml map_path:<span class="token operator">=</span><span class="token variable">$HOME</span>/autoware_map/sample-map-planning vehicle_model:<span class="token operator">=</span>sample_vehicle sensor_model:<span class="token operator">=</span>sample_sensor_kit
+</code></pre>
+<p>操作方法: <a href="https://autowarefoundation.github.io/autoware-documentation/main/tutorials/ad-hoc-simulation/planning-simulation/#basic-simulations">https://autowarefoundation.github.io/autoware-documentation/main/tutorials/ad-hoc-simulation/planning-simulation/#basic-simulations</a></p>
+<hr>
+<p>(TODO) 時間があるときに整備する</p>
+</div>
+</body>
+
+</html>
